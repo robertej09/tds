@@ -3,46 +3,16 @@
 # to trigger an update to docker image and push to dockerhub
 ###################################################################
 
-###################################################################
-# COMMIT FORMAT TO ENSURE FUNCTIONALITY
-###################################################################
-#
-# git commit -m '<Normal commit message>' \
-# -m 'DOCKERTAG <tag name>' \
-# -m 'WARURL <URL to .war file>'
-#
-# Note the single quotes, to ensure that bash doesn't intepret any
-# special characters in the URL. If using an IDE or other git gui,
-# the important thing is to ensure the URL makes it into the commit
-# message as shown below.
-#
-# <tag name> is generally the version number, for example:
-# -m 'DOCKERTAG 4.6'
-# -m 'DOCKERTAG 5.4-SNAPSHOT'
-# Some of these tags already exist on the thredds-docker github
-# repo and correspond to branch names. It is okay to reuse these.
-#
-# <URL to .war file> is what it says on the box, for example:
-# -m 'WARURL https://downloads.unidata.ucar.edu/tds/5.3/thredds%23%235.3.war'
-#
-###################################################################
-#
-# This will result in an output of "git log" of, for example:
-#
-# commit 0b9274e7aa45c9d284cbe4085e03edabd8974498 (HEAD -> main)
-# Author: Bobby Espinoza <respinoza@ucar.edu>
-# Date:   Mon May 9 18:04:10 2022 -0600
-# 
-#     normal message
-# 
-#     DOCKERTAG tag
-# 
-#     WARURL url
-#
-###################################################################
-
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker tag'
+        required: true
+        default: 'latest'
+      url:
+        description: 'TDS .war URL'
+        required: true
 
 jobs:
   post:
@@ -50,29 +20,15 @@ jobs:
     steps:
     - name: Checkout default branch
       uses: actions/checkout@v2
-
-    - name: Grab tag info from most recent commit
-      run: |
-        tag=$(git log -1 |
-        grep "DOCKERTAG" |
-        awk '{ print $2 }')
-        echo tag=$tag >> $GITHUB_ENV
-
-    - name: Grab URL info from most recent commit
-      run: |
-        url=$(git log -1 |
-        grep "WARURL" |
-        awk '{ print $2 }')
-        echo url=$url >> $GITHUB_ENV
         
     - name: Verify variables
       run: |
-        echo TAG: ${{ env.tag }}
-        echo WARURL: ${{ env.url }}
+        echo TAG: ${{ github.event.inputs.tag }}
+        echo WARURL: ${{ github.event.inputs.url }}
 
     - name: Send POST request
       run: |
         ./.github/helperScripts/dispatch.sh \
-        --tag ${{ env.tag }} \
-        --tdsurl ${{ env.url }} \
+        --tag ${{ github.event.inputs.tag }} \
+        --tdsurl ${{ github.event.inputs.url }} \
         --token ${{ secrets.threddsDockerToken }}
